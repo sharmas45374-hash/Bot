@@ -9,13 +9,14 @@ const HOST = "SoulSMP12.aternos.me";
 const PORT = 40740;
 
 const BOT_USERNAME = "SKSHIVAM";
-const BOT_PASSWORD = process.env.BOT_PASSWORD || "YOUR_PASSWORD";
+const BOT_PASSWORD = "QmZtRkLpXa";
 
 let bot;
 let reconnecting = false;
+let activityTimer;
 
 function createBot() {
-  console.log("🤖 Connecting to SoulSMP...");
+  console.log("🔄 Connecting to SoulSMP...");
 
   bot = mineflayer.createBot({
     host: HOST,
@@ -36,18 +37,16 @@ function createBot() {
 
     bot.pathfinder.setMovements(movements);
 
-    // Login after joining
+    // Login
     setTimeout(() => {
       bot.chat(`/login ${BOT_PASSWORD}`);
     }, 2500);
 
-    // Start normal activity
-    setTimeout(() => {
-      startActivity();
-    }, 5000);
+    // Start activity
+    setTimeout(startActivity, 6000);
   });
 
-  // Auth messages can sometimes arrive slightly later
+  // Automatic register/login
   bot.on("messagestr", message => {
     const msg = message.toLowerCase();
 
@@ -55,14 +54,18 @@ function createBot() {
       msg.includes("register") ||
       msg.includes("please register")
     ) {
-      bot.chat(`/register ${BOT_PASSWORD} ${BOT_PASSWORD}`);
+      setTimeout(() => {
+        bot.chat(`/register ${BOT_PASSWORD} ${BOT_PASSWORD}`);
+      }, 1000);
     }
 
     if (
       msg.includes("login") ||
       msg.includes("please login")
     ) {
-      bot.chat(`/login ${BOT_PASSWORD}`);
+      setTimeout(() => {
+        bot.chat(`/login ${BOT_PASSWORD}`);
+      }, 1000);
     }
   });
 
@@ -72,7 +75,7 @@ function createBot() {
   });
 
   bot.on("end", () => {
-    console.log("🔌 Connection ended.");
+    console.log("🔌 Disconnected!");
     reconnect();
   });
 
@@ -81,10 +84,148 @@ function createBot() {
   });
 }
 
+// -------------------------
+// RANDOM WALK
+// -------------------------
+
+function randomWalk() {
+  if (!bot?.entity) return;
+
+  const pos = bot.entity.position;
+
+  const x = pos.x + (Math.random() - 0.5) * 20;
+  const z = pos.z + (Math.random() - 0.5) * 20;
+
+  bot.pathfinder.setGoal(
+    new goals.GoalNear(x, pos.y, z, 2)
+  );
+
+  console.log("🚶 Bot walking...");
+}
+
+// -------------------------
+// RANDOM LOOK
+// -------------------------
+
+function randomLook() {
+  if (!bot?.entity) return;
+
+  const yaw = Math.random() * Math.PI * 2;
+  const pitch = (Math.random() - 0.5) * 0.6;
+
+  bot.look(yaw, pitch, true);
+
+  console.log("👀 Looking around...");
+}
+
+// -------------------------
+// RANDOM JUMP
+// -------------------------
+
+function randomJump() {
+  if (!bot?.entity) return;
+
+  bot.setControlState("jump", true);
+
+  setTimeout(() => {
+    if (bot) {
+      bot.setControlState("jump", false);
+    }
+  }, 400);
+
+  console.log("🦘 Jump!");
+}
+
+// -------------------------
+// BREAK NEARBY BLOCK
+// -------------------------
+
+async function breakBlock() {
+  if (!bot?.entity) return;
+
+  const block = bot.findBlock({
+    matching: block =>
+      block &&
+      block.diggable &&
+      block.name !== "bedrock" &&
+      block.name !== "air",
+    maxDistance: 3
+  });
+
+  if (!block) return;
+
+  try {
+    console.log(`⛏️ Breaking ${block.name}...`);
+
+    await bot.dig(block);
+
+    console.log("✅ Block broken!");
+  } catch (err) {
+    console.log("⛏️ Couldn't break block.");
+  }
+}
+
+// -------------------------
+// RANDOM ACTIVITY
+// -------------------------
+
+function randomActivity() {
+  if (!bot?.entity) return;
+
+  const action = Math.floor(Math.random() * 4);
+
+  switch (action) {
+    case 0:
+      randomWalk();
+      break;
+
+    case 1:
+      randomLook();
+      break;
+
+    case 2:
+      randomJump();
+      break;
+
+    case 3:
+      breakBlock();
+      break;
+  }
+}
+
+// -------------------------
+// START ACTIVITY
+// -------------------------
+
+function startActivity() {
+  if (activityTimer) {
+    clearInterval(activityTimer);
+  }
+
+  console.log("🟢 AFK activity started!");
+
+  randomActivity();
+
+  activityTimer = setInterval(() => {
+    randomActivity();
+  }, 7000 + Math.random() * 8000);
+}
+
+// -------------------------
+// AUTO RECONNECT
+// -------------------------
+
 function reconnect() {
   if (reconnecting) return;
 
   reconnecting = true;
+
+  if (activityTimer) {
+    clearInterval(activityTimer);
+    activityTimer = null;
+  }
+
+  console.log("⏳ Reconnecting in 10 seconds...");
 
   setTimeout(() => {
     reconnecting = false;
@@ -92,93 +233,8 @@ function reconnect() {
   }, 10000);
 }
 
-function randomWalk() {
-  if (!bot || !bot.entity) return;
+// -------------------------
+// START BOT
+// -------------------------
 
-  const distance = 5 + Math.floor(Math.random() * 12);
-
-  const x =
-    bot.entity.position.x +
-    (Math.random() - 0.5) * distance * 2;
-
-  const z =
-    bot.entity.position.z +
-    (Math.random() - 0.5) * distance * 2;
-
-  const y = bot.entity.position.y;
-
-  bot.pathfinder.setGoal(
-    new goals.GoalNear(x, y, z, 2)
-  );
-
-  console.log("🚶 Walking...");
-}
-
-function randomLook() {
-  if (!bot || !bot.entity) return;
-
-  const yaw = Math.random() * Math.PI * 2;
-  const pitch = (Math.random() - 0.5) * 0.5;
-
-  bot.look(yaw, pitch, true);
-}
-
-function randomJump() {
-  if (!bot || !bot.entity) return;
-
-  bot.setControlState("jump", true);
-
-  setTimeout(() => {
-    if (bot) bot.setControlState("jump", false);
-  }, 300 + Math.random() * 500);
-}
-
-async function breakNearbyBlock() {
-  if (!bot || !bot.entity) return;
-
-  const block = bot.findBlock({
-    matching: b =>
-      b &&
-      b.name !== "air" &&
-      b.name !== "bedrock" &&
-      b.diggable,
-    maxDistance: 3
-  });
-
-  if (!block) return;
-
-  try {
-    console.log("⛏️ Breaking:", block.name);
-
-    await bot.dig(block);
-
-    console.log("✅ Block broken");
-  } catch (err) {
-    console.log("⛏️ Could not break block");
-  }
-}
-
-function randomActivity() {
-  if (!bot || !bot.entity) return;
-
-  const action = Math.floor(Math.random() * 5);
-
-  if (action === 0) randomWalk();
-  if (action === 1) randomLook();
-  if (action === 2) randomJump();
-  if (action === 3) randomWalk();
-  if (action === 4) breakNearbyBlock();
-}
-
-function startActivity() {
-  console.log("🟢 Normal-player activity started.");
-
-  randomActivity();
-
-  setInterval(() => {
-    randomActivity();
-  }, 7000 + Math.random() * 8000);
-}
-
-// Start
 createBot();
